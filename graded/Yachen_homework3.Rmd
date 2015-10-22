@@ -1,0 +1,132 @@
+---
+title: "Assignment 3"
+author: "Ya-Chen Lin"
+date: "2015 M09 23"
+output: pdf_document
+---
+
+#Question 02:
+\textit{Write a simulation to calculate the power for the following study design.}
+
+Find the power when the sample size is 100 patients. 
+```{r}
+set.seed(1)
+#Create a function with n=100 and return the pvalue
+p<- function(){
+treatment <- matrix(rbinom(n=100, size=1, prob=1/2))
+outcome <- matrix(rnorm(100, mean=60, sd=20))
+study <- cbind(treatment, outcome)
+colnames(study) <- c('treatment' ,'outcome')
+study <- data.frame(study)
+for(i in 1:100){
+  if(study[i,1] == 1){
+    study[i,2] <- study[i,2] + 5
+  }
+}
+mod.study <- lm(outcome ~ treatment, data=study)
+pvalue <- summary(mod.study)$coefficients['treatment',4]
+return(pvalue)
+}
+#Simulate this function for 1000 times
+loops <- 1000
+pb <- c()
+ps <- 0
+for(i in seq(loops)){
+  pb[i] <- p()  
+}
+power100 <- sum(pb[] <= 0.05) *100 / loops
+power100
+```
+Find the power when the sample size is 1000 patients. 
+```{r}
+set.seed(2)
+#Create a function with n=1000 and return pvalue
+p<- function(){
+treatment <- matrix(rbinom(n=1000, size=1, prob=1/2))
+outcome <- matrix(rnorm(1000, mean=60, sd=20))
+study <- cbind(treatment, outcome)
+colnames(study) <- c('treatment' ,'outcome')
+study <- data.frame(study)
+for(i in 1:1000){
+  if(study[i,1] == 1){
+    study[i,2] <- study[i,2] + 5
+  }
+}
+mod.study <- lm(outcome ~ treatment, data=study)
+pvalue <- summary(mod.study)$coefficients['treatment',4]
+return(pvalue)
+}
+#Simulate this function for 1000 times
+loops <- 1000
+pb <- c()
+ps <- 0
+for(i in seq(loops)){
+  pb[i] <- p()  
+}
+power1000 <- sum(pb[] <= 0.05) *100 / loops
+power1000
+```
+#Question 03:
+\textit{Obtain a copy of the football-values lecture.} 
+```{r}
+rb <- read.csv('https://raw.githubusercontent.com/couthcommander/football-values/master/2015/proj_rb15.csv')
+rb <- rb[, 3:10]
+```
+1. Show the correlation matrix of this data set.
+```{r}
+cor(rb)
+```
+2. Generate a data set with 30 rows that has a similar correlation structure. Repeat the procedure 10,000 times and return the mean correlation matrix.
+```{r}
+set.seed(3)
+rb <- read.csv('https://raw.githubusercontent.com/couthcommander/football-values/master/2015/proj_rb15.csv')
+rb <- rb[, 3:10]
+means.rb <- colMeans(rb)
+vcov.rb <- var(rb)
+library(MASS)
+rb.sim.c <- 0
+loops <- 10000
+for ( i in seq(loops)){
+rb.sim <- mvrnorm (30, mu=means.rb, Sigma = vcov.rb)
+rb.sim <- data.frame(rb.sim)
+rb.sim.c <- rb.sim.c + (cor(rb.sim) / loops)
+}
+rb.sim.c
+```
+3.Generate a data set with 30 rows that has the exact correlation structure as the original data set. 
+```{r}
+rbn <- mvrnorm(30, mu=means.rb, Sigma = vcov.rb, empirical = TRUE)
+cor(rb)
+cor(rbn)
+```
+With empirical = TRUE, we can get data with exact same correlation  
+
+#Question 04:  
+1.  
+```{r}
+#\begin{align}
+#P(B) &=\sum_{j} P(B|A_j)P(A_j),\\ 
+#& \Rightarrow P(A_i|B)\frac{P(B|A_i)P(A_i)}{\sum_{j}P(B|A_j)P(A_i)}
+#\end{align}
+
+```
+\begin{align}
+P(B) &=\sum_{j} P(B|A_j)P(A_j),\\ 
+& \Rightarrow P(A_i|B)\frac{P(B|A_i)P(A_i)}{\sum _j P(B|A_j)P(A_i)}
+\end{align}
+
+2.  
+```{r}
+#$\hat{f}(\zeta)=\displaystyle\int_{-\infty}^{\infty} f(x) e^{-2{\pi}ix{\zeta}} dx$
+```
+$\hat{f}(\zeta)=\displaystyle\int_{-\infty}^{\infty} f(x) e^{-2{\pi}ix{\zeta}} dx$
+
+3.
+```{r}
+#$\mathbf{J}=\frac{d\mathbf{f}}{d\mathbf{x}}=\left[\frac{\partial \mathbf{f}}{\partial x_1}\cdots\frac{\partial\mathbf{f}}{\partial x_n}\right]=\left[ \begin{array}{cc} \frac{\partial f_1}{\partial x_1} \cdots\frac{\partial f_1}{\partial x_n} \\ \vdots \ddots\vdots \\ \frac{\partial f_m}{\partial x_1}\cdots\frac{\partial f_m}{\partial x_n}\end{array}\right]$
+```
+$\mathbf{J}=\frac{d\mathbf{f}}{d\mathbf{x}}=\left[\frac{\partial \mathbf{f}}{\partial x_1}\cdots\frac{\partial\mathbf{f}}{\partial x_n}\right]=\left[ \begin{array}{cc} \frac{\partial f_1}{\partial x_1} \cdots\frac{\partial f_1}{\partial x_n} \\ \vdots \ddots\vdots \\ \frac{\partial f_m}{\partial x_1}\cdots\frac{\partial f_m}{\partial x_n}\end{array}\right]$
+
+### Notes/Grade:
+
+50/50 points

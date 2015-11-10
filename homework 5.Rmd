@@ -1,0 +1,258 @@
+---
+title: "Homework 05"
+author: "Ya-Chen Lin (Lisa)"
+date: "2015 M11 5"
+output: pdf_document
+---
+###Question 01###
+```{r}
+library("lubridate")
+```
+1.
+```{r}
+haart <- read.csv("https://raw.githubusercontent.com/fonnesbeck/Bios6301/master/datasets/haart.csv")
+haart[,'init.date'] <- as.Date(haart[,'init.date'], format="%m/%d/%y")
+year <- format(haart$init.date,'%Y')
+table(year)
+```
+2.
+```{r}
+haart[,'date.death'] <- as.Date(haart[,'date.death'], format="%m/%d/%y")
+death <- which(haart$death == 1)
+indi <- c()
+for(i in seq_along(death)){
+  if(haart$date.death[death[i]] - haart$init.date[death[i]] <= 365){
+    indi <- c(indi, 1)
+  }else{
+    indi <- c(indi, 0)
+  }
+}
+sum(indi == 1)
+```
+3.
+```{r}
+haart[,'init.date'] <- as.Date(haart[,'init.date'], format="%m/%d/%y")
+haart[,'date.death'] <- as.Date(haart[,'date.death'], format="%m/%d/%y")
+haart[,'last.visit'] <- as.Date(haart[,'last.visit'], format="%m/%d/%y")
+date.diff <- rep(NA, length(haart[,'init.date']))
+for(i in seq_along(haart[,'init.date'])){
+  if(is.na(haart[i,'last.visit']) == FALSE){
+    date.diff[i] <- as.numeric(haart[i,'last.visit']-haart[i,'init.date']) 
+  }else{
+    date.diff[i] <- as.numeric(haart[i,'date.death'] -haart[i,'init.date'])
+  }
+  if(date.diff[i] > 365){
+    date.diff[i] <- 365
+  }
+}
+quantile(date.diff)
+```
+4.
+```{r}
+haart[,'last.visit'] <- as.Date(haart[,'last.visit'], format="%m/%d/%y")
+loss.follow.up <- rep(NA, length(haart[,'init.date']))
+for(i in seq_along(haart[,'init.date'])){
+  if(haart[i,'death'] != 1 && haart[i,'last.visit'] -haart[i,'init.date'] <= 365){
+    loss.follow.up[i] <- TRUE
+  }else{
+    loss.follow.up[i] <- FALSE
+  }
+}
+sum(loss.follow.up == TRUE)
+```
+We can see that there are 173 records lost follow-ups.  
+5.
+```{r}
+reg_list <- strsplit(as.character(haart[,'init.reg']), ',')
+all_drugs <- unique(unlist(reg_list))
+reg_drugs <- matrix(nrow=nrow(haart), ncol=length(all_drugs))
+for(i in seq_along(all_drugs)){
+  reg_drugs[,i] <- sapply(reg_list, function(x) all_drugs[i] %in% x)
+}
+colnames(reg_drugs) <- all_drugs
+haart <- cbind(haart,reg_drugs)
+usage <- rep(NA, length(all_drugs))
+for(i in seq_along(all_drugs)){
+  usage[i] <- sum(reg_drugs[,i] == TRUE)
+}
+all_drugs[which(usage > 100)]
+```
+6.
+```{r}
+haart2 <- read.csv("https://raw.githubusercontent.com/fonnesbeck/Bios6301/master/datasets/haart2.csv")
+reg_list <- strsplit(as.character(haart[,'init.reg']), ',')
+all_drugs <- unique(unlist(reg_list))
+reg_list2 <- strsplit(as.character(haart2[,'init.reg']), ',')
+reg_drugs2 <- matrix(nrow=nrow(haart2), ncol=length(all_drugs))
+for(i in seq_along(all_drugs)){
+  reg_drugs2[,i] <- sapply(reg_list2, function(x) all_drugs[i] %in% x)
+}
+colnames(reg_drugs2) <- all_drugs
+haart2 <- cbind(haart2,reg_drugs2)
+newdataframe <- rbind(haart, haart2)
+newdataframe[1:5,]
+newdataframe[1000:1004,]
+```
+###Question 02###
+```{r}
+haart <- read.csv("https://raw.githubusercontent.com/fonnesbeck/Bios6301/master/datasets/haart.csv")
+data <- haart[,c('cd4baseline', 'weight', 'hemoglobin','death')]
+data <- data[complete.cases(data),]
+# Logistic function
+logistic <- function(x) 1 / (1 + exp(-x))
+x <- data[1:3]
+y <- data[4]
+
+estimate_logistic <- function(x, y, MAX_ITER=10) {
+  
+  n <- dim(x)[1]
+  k <- dim(x)[2]
+  
+  x <- as.matrix(cbind(rep(1, n), x))
+  y <- as.matrix(y)
+  
+  # Initialize fitting parameters
+  theta <- rep(0, k+1)
+  
+  J <- rep(0, MAX_ITER)
+  
+  for (i in 1:MAX_ITER) {
+    
+    # Calculate linear predictor
+    z <- x %*% theta
+    # Apply logit function
+    h <- logistic(z)
+    
+    # Calculate gradient
+    grad <- t((1/n)*x) %*% as.matrix(h - y)
+    # Calculate Hessian
+    H <- t((1/n)*x) %*% diag(array(h)) %*% diag(array(1-h)) %*% x
+    
+    # Calculate log likelihood
+    J[i] <- (1/n) %*% sum(-y * log(h) - (1-y) * log(1-h))
+    
+    # Newton's method
+    theta <- theta - solve(H) %*% grad
+  }
+  
+  return(theta)
+}
+```
+```{r}
+estimate_logistic(x,y)
+g <- glm(death ~ cd4baseline+ weight+hemoglobin, data=haart,family=binomial(logit))
+print(g$coefficients)
+```
+###Question 03###
+```{r}
+data <- read.csv("https://raw.githubusercontent.com/lisa8191/Bios6301/master/datasets/addr.txt", sep='', row.names=NULL, header=FALSE)
+data <- data.frame(data)
+newdata <- matrix(NA, ncol=7, nrow=43)
+#lastname, firstname, streetno, streetname, city, state, zip. 
+colnames(newdata) <- c("lastname", "firstname", "streetno", "streetname", "city", "state", "zip")
+#lastname
+for(i in 1:43){
+  newdata[i,1] <- as.character(data[i,1])
+}
+#streetno
+a <- grep("[0-9]",data[,3])
+for(i in seq_along(a)){
+  newdata[a[i],3] <- as.character(data[a[i],3])
+}
+b <- grep("[0-9]",data[,4])
+for(i in seq_along(b)){
+  newdata[b[i],3] <- as.character(data[b[i],4])
+}
+#zip
+b <- grep("[0-9]",data[,8])
+for(i in seq_along(b)){
+  newdata[b[i],7] <- as.character(data[b[i],8])
+}
+c <- grep("[0-9]",data[,9])
+for(i in seq_along(c)){
+  newdata[c[i],7] <- as.character(data[c[i],9])
+}
+d <- grep("[0-9]",data[,10])
+for(i in seq_along(d)){
+  newdata[d[i],7] <- as.character(data[d[i],10])
+}
+#State
+s7 <- grep("[A-Z]{2}", data[,7])
+for(i in seq_along(s7)){
+  newdata[s7[i],6] <- as.character(data[s7[i],7])
+}
+s8 <- grep("[A-Z]{2}", data[,8])
+for(i in seq_along(s8)){
+  newdata[s8[i],6] <- as.character(data[s8[i],8])
+}
+s9 <- grep("[A-Z]{2}", data[,9])
+for(i in seq_along(s9)){
+  newdata[s9[i],6] <- as.character(data[s9[i],9])
+}
+s10 <- grep("[A-Z]{2}", data[,10])
+for(i in seq_along(s10)){
+  newdata[s10[i],6] <- as.character(data[s10[i],10])
+}
+#city
+b<- grep("Ave.|Rd.|St.|Ln|Blvd|Rd", data[,5])
+c<- grep("Ave.|Rd.|St.|Ln|Blvd|Rd", data[,6])
+d<- grep("Ave.|Rd.|St.|Ln|Blvd|Rd", data[,7])
+wms7 <- which(data[,7] == "Wms.")
+wms8 <- which(data[,8] == "Wms.")
+for(i in seq_along(b)){
+  newdata[b[i],5] <- as.character(data[b[i],6])
+}
+for(i in seq_along(c)){
+  newdata[c[i],5] <- as.character(data[c[i],7])
+}
+for(i in seq_along(d)){
+  newdata[d[i],5] <- as.character(data[d[i],8])
+}
+for(i in seq_along(wms7)){
+  newdata[wms7[i],5] <- paste(as.character(data[wms7[i],7]),as.character(data[wms7[i],8]))
+}
+for(i in seq_along(wms8)){
+  newdata[wms8[i],5] <- paste(as.character(data[wms8[i],8]),as.character(data[wms8[i],9]))
+}
+#first.name
+a <- grep("[A-Z]", data[,3])
+b <- grep("^[^A-Z]", data[,3])
+for(i in seq_along(a)){
+  newdata[a[i],2] <- paste(as.character(data[a[i],2]),as.character(data[a[i],3]))
+}
+for(i in seq_along(b)){
+  newdata[b[i],2] <- as.character(data[b[i],2])
+}
+#street.name
+a <- grep("[A-Z]", data[,3])#4th row=number
+b<- grep("Ave.|Rd.|St.|Ln|Blvd|Rd", data[,5])
+c<- grep("Ave.|Rd.|St.|Ln|Blvd|Rd", data[,6])
+at <- a[which(a %in% c == TRUE)]
+af <- c[which(c %in% a == FALSE)]
+d<- grep("Ave.|Rd.|St.|Ln|Blvd|Rd", data[,7])
+att <- a[which(a %in% d == TRUE)]
+atf <- d[which(d %in% a == FALSE)]
+for(i in seq_along(b)){
+  newdata[b[i],4] <- paste(as.character(data[b[i],4]), as.character(data[b[i],5]))
+}
+for(i in seq_along(at)){
+  newdata[at[i],4] <- paste(as.character(data[at[i],5]), as.character(data[at[i],6]))
+}
+for(i in seq_along(af)){
+  newdata[af[i],4] <- paste(as.character(data[af[i],4]), as.character(data[af[i],5]),as.character(data[af[i],6]))
+}
+for(i in seq_along(att)){
+  newdata[att[i],4] <- paste(as.character(data[att[i],5]), as.character(data[att[i],6]),as.character(data[att[i],7]))
+}
+for(i in seq_along(atf)){
+  newdata[atf[i],4] <- paste(as.character(data[atf[i],4]), as.character(data[atf[i],5]),as.character(data[atf[i],6]),as.character(data[atf[i],7]))
+}
+
+newdata[20,7] <- as.character(data[21,1])
+newdata <- newdata[-21,]
+newdata[21,6] <- as.character(data[22,7])
+newdata <- data.frame(newdata)
+newdata
+```
+###Question 04###
+It seems like when trying to put 'death' as response, the function is reading death as a variable. Thus, it returns error as "death" not found.  

@@ -1,0 +1,232 @@
+---
+title: "Homework 06"
+author: "Ya-Chen Lin (Lisa)"
+output: pdf_document
+---
+```{r, results=FALSE}
+library("ggplot2")
+```
+
+##Question 01##
+```{r}
+pop <- data.frame(m = rnorm(100, 160, 20), f = rnorm(100, 160, 20)) #pop1
+next_gen <- function(pop) {
+  pop$m <- sample(pop$m)
+  pop$m <- rowMeans(pop)
+  pop$f <- pop$m
+  pop
+}
+pop2 <- next_gen(pop) 
+pop3 <- next_gen(pop2)
+pop4 <- next_gen(pop3) 
+pop5 <- next_gen(pop4) 
+pop6 <- next_gen(pop5) 
+pop7 <- next_gen(pop6) 
+pop8 <- next_gen(pop7) 
+pop9 <- next_gen(pop8) 
+hist(pop$m, xlab=" male height", main='Male height distribution first generation')
+hist(pop2$m, xlab="male height", main='Male height distribution second generation')
+hist(pop3$m, xlab="male height", main='Male height distribution third generation')
+hist(pop4$m, xlab="male height", main='Male height distribution fourth generation')
+hist(pop5$m, xlab="male height", main='Male height distribution fifth generation')
+hist(pop6$m, xlab="male height", main='Male height distribution sixth generation')
+hist(pop7$m, xlab="male height", main='Male height distribution seventh generation')
+hist(pop8$m, xlab="male height", main='Male height distribution eigth generation')
+hist(pop9$m, xlab="male height", main='Male height distribution ninth generation')
+```  
+
+##Question 02 ##
+```{r}
+pop$generation <- 1
+pop2$generation <- 2
+pop3$generation <- 3
+pop4$generation <- 4
+pop5$generation <- 5
+pop6$generation <- 6
+pop7$generation <- 7
+pop8$generation <- 8
+pop9$generation <- 9
+newpop <- rbind(pop,pop2,pop3,pop4,pop5,pop6,pop7,pop8,pop9)
+
+ggplot(newpop, aes(m,f)) + geom_point(alpha=0.15, shape = 16, size =2) + facet_wrap(~generation)+
+  scale_y_continuous(breaks=seq(120,200,20)) + scale_x_continuous(breaks=seq(100,220,20)) + 
+  theme(text = element_text(size=15)) 
+```  
+
+##Question 03##
+```{r}
+medianone <- rep(NA,10)
+medianzero <- rep(NA, 10)
+upquanone <- rep(NA,10)
+loquanone <- rep(NA, 10)
+upquanzero <- rep(NA, 10)
+loquanzero <- rep(NA,10)
+for(i in c(250, 500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500)){
+  treatment <- rbinom(i,1,1/2)
+  data <- rnorm(i,60,20)
+  oned <- which(treatment == 1)
+  zerd <- which (treatment == 0)
+  data[oned] <- data[oned] + 5
+  bmone <- replicate(1000, mean(sample(data[oned],length(data[oned]), replace = TRUE)))
+  bmzero <-  replicate(1000, mean(sample(data[zerd],length(data[oned]), replace = TRUE)))
+  medianone[i/250] <- quantile(bmone, prob=0.5)
+  medianzero[i/250]<- quantile(bmzero, prob=0.5)
+  upquanone[i/250] <- quantile(bmone, prob=0.975)
+  loquanone[i/250] <- quantile(bmone, prob=0.025)
+  upquanzero[i/250] <- quantile(bmzero, prob=0.975)
+  loquanzero[i/250] <- quantile(bmzero, prob=0.025)
+}
+makeTransparent = function(..., alpha=0.5) {
+  if(alpha<0 | alpha>1) stop("alpha must be between 0 and 1")
+  alpha = floor(255*alpha)  
+  newColor = col2rgb(col=unlist(list(...)), alpha=FALSE)
+  .makeTransparent = function(col, alpha) {
+    rgb(red=col[1], green=col[2], blue=col[3], alpha=alpha, maxColorValue=255)
+  }
+  newColor = apply(newColor, 2, .makeTransparent, alpha=alpha)
+  return(newColor)
+}
+plot(1:10, medianone, type='l', xlab=" ", ylab=" ", ylim=c(50,75))
+lines(1:10, medianzero)
+polygon(x=c(seq(1,10), seq(10,1)),
+        y=c(upquanone,rev(loquanone)), border=NA, col=makeTransparent('red',alpha=0.5))
+polygon(x=c(seq(1,10), seq(10,1)),
+        y=c(upquanzero,rev(loquanzero)), border=NA, col=makeTransparent('blue',alpha=0.5))
+
+```  
+
+##Question 04##
+1. Print the medical record, and print the class of the medical record
+```{r}
+set.seed(8)
+makePatient <- function() {
+  vowel <- grep("[aeiou]", letters)
+  cons <- grep("[^aeiou]", letters)
+  name <- paste(sample(LETTERS[cons], 1), sample(letters[vowel], 1), sample(letters[cons], 1), sep='')
+  gender <- factor(sample(0:1, 1), levels=0:1, labels=c('female','male'))
+  dob <- as.Date(sample(7500, 1), origin="1970-01-01")
+  n <- sample(6, 1)
+  doa <- as.Date(sample(1500, n), origin="2010-01-01")
+  pulse <- round(rnorm(n, 80, 10))
+  temp <- round(rnorm(n, 98.4, 0.3), 2)
+  fluid <- round(runif(n), 2)
+  list(name, gender, dob, doa, pulse, temp, fluid)
+}
+patient <- function(x) {
+  output <- makePatient()
+  
+  value <- list(output[1],output[2],output[3],output[4],output[5],
+                output[6],output[7])
+  names(value) <- c("name", "gender", "date_of_birth","date_of_admission",
+                     "pulse","temperature","fluid")
+  
+  attr(value, "class") <- "medicalRecord"
+  value
+}
+medicalrecord <- patient()
+medicalrecord
+class(medicalrecord)
+```
+2.Call each function for the medical record created in part 1
+```{r}
+#mean
+mean.medicalRecord <- function(obj){
+  cat("average pulse:", mean(unlist(obj$pulse)), "\n" )
+  cat("average temperature:",mean(unlist(obj$temp)), "\n" )
+  cat("average fluid:",mean(unlist(obj$fluid)), "\n" )
+}
+mean(medicalrecord)
+#plot
+plot.medicalRecord <- function(obj){
+  par(mfrow=c(1,3))
+  plot(unlist(obj$pulse), type='l', col="blue", main="Pulse measurement",
+       ylab="pulse", xlab='each admission') 
+  plot(unlist(obj$temp), type='l', col="red", main="Temperature measurement",
+       ylab="temperature(F)", xlab='each admission') 
+  plot(unlist(obj$fluid), type='l', col="green", main="Fluid measurement",
+       ylab="fluid", xlab='each admission') 
+  
+}
+plot(medicalrecord)
+
+#print
+print.medicalRecord <- function(obj) {
+  doa <- do.call(unlist, obj$date_of_admission)
+  pulse <- do.call(unlist, obj$pulse)
+  temp <-do.call(unlist, obj$temperature)
+  fluid <- do.call(unlist, obj$fluid)
+  matm <- matrix(NA, ncol=length(doa), nrow=3)
+  colnames(matm) <- as.character(doa)
+  rownames(matm) <- c("pulse", "temperature", "fluid")
+  for(i in 1:length(doa)){
+    matm[1,i] <- pulse[i]
+    matm[2,i] <- temp[i]
+    matm[3,i] <- fluid[i]
+  }
+  a <- list(matm)
+  names(a) <- obj$name
+  return(a)
+}
+print(medicalrecord)
+```
+3.Reset the RNG seed to 8 and create a cohort of ten patients, then show the output
+```{r}
+set.seed(8)
+makecohortPatient <- function() {
+  cohort <- c()
+  for(i in 1:10){
+    vowel <- grep("[aeiou]", letters)
+    cons <- grep("[^aeiou]", letters)
+    name <- paste(sample(LETTERS[cons], 1), sample(letters[vowel], 1), sample(letters[cons], 1), sep='')
+    gender <- factor(sample(0:1, 1), levels=0:1, labels=c('female','male'))
+    dob <- as.Date(sample(7500, 1), origin="1970-01-01")
+    n <- sample(6, 1)
+    doa <- as.Date(sample(1500, n), origin="2010-01-01")
+    pulse <- round(rnorm(n, 80, 10))
+    temp <- round(rnorm(n, 98.4, 0.3), 2)
+    fluid <- round(runif(n), 2)
+    indi <- list(name=name, gender=as.character(gender), dob=as.character(dob), doa=as.character(doa), pulse=pulse, temp=temp, fluid=fluid)
+    cohort <- c(cohort, indi)
+  }
+  return(cohort)
+}
+group <- makecohortPatient()
+class(group) <- "cohort"
+#take mean of all patients
+mean.cohort <- function(obj){
+  pulsetotal <- rep(NA, 10)
+  temptotal <- rep(NA, 10)
+  fluidtotal <- rep(NA, 10)
+  for(i in 1:10){
+    pulsetotal[i] <- mean(unlist(obj[(7*i)-2]))
+    temptotal[i] <-  mean(unlist(obj[(7*i)-1]))
+    fluidtotal[i] <- mean(unlist(obj[7*i]))
+  }
+  cat("average pulse:", pulsetotal, "\n" )
+  cat("average temperature:",temptotal, "\n" )
+  cat("average fluid:",fluidtotal, "\n" )
+}
+mean(group)
+#print all patients' measurements according to dates
+print.cohort <- function(obj){
+  thislist <- list(0,0,0,0,0,0,0,0,0,0)
+  for(i in 1:10){
+    doaa <- unlist(obj[(7*i) - 3])
+    mat <- matrix(NA, ncol=length(doaa), nrow=3)
+    pulse <- unlist(obj[(7*i)-2])
+    temp <-unlist(obj[(7*i)-1])
+    fluid <- unlist(obj[7*i])
+    colnames(mat) <- as.character(doaa)
+    rownames(mat) <- c("pulse", "temperature", "fluid")
+    for(k in 1:length(doaa)){
+      mat[1,k] <- pulse[k]
+      mat[2,k] <- temp[k]
+      mat[3,k] <- fluid[k]
+    }
+    thislist[[i]] <- mat
+  
+  }
+  return(thislist)
+}
+print(group)
+```
